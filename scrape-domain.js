@@ -1,19 +1,23 @@
-const express = require('express');
 const { chromium } = require('playwright');
-const app = express();
-const PORT = 3000;
 
-// Endpoint: /check/namadomain.com
-app.get('/check/:domain', async (req, res) => {
-  const domain = req.params.domain;
-  
-  // 1. Launch Browser
-  const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext();
-  const page = await context.newPage();
+(async () => {
+
+  const domain = process.argv[2];
+
+  if (!domain) {
+    console.log("Gunakan: node scrape.js namadomain.com");
+    process.exit(1);
+  }
+
+  const browser = await chromium.launch({
+    headless: true
+  });
+
+  const page = await browser.newPage();
+
+  console.log("Scraping:", domain);
 
   try {
-    // 2. Logika Scraping kamu (sama seperti sebelumnya)
     await page.goto(`https://www.whois.com/whois/${domain}`, {
       waitUntil: 'domcontentloaded',
       timeout: 20000
@@ -24,6 +28,7 @@ app.get('/check/:domain', async (req, res) => {
     const data = await page.evaluate(() => {
       const rows = document.querySelectorAll('.df-row');
       const result = {};
+
       rows.forEach(row => {
         const label = row.querySelector('.df-label')?.innerText.trim();
         const value = row.querySelector('.df-value')?.innerText.trim();
@@ -31,27 +36,25 @@ app.get('/check/:domain', async (req, res) => {
           result[label.replace(':','')] = value;
         }
       });
+
       return result;
     });
 
-    // 3. Kirim response langsung sebagai JSON
-    res.json({
+    console.log(JSON.stringify({
       domain,
       success: true,
       data
-    });
+    }, null, 2));
 
   } catch (err) {
-    res.status(500).json({
+    console.log(JSON.stringify({
       domain,
       success: false,
       error: err.message
-    });
-  } finally {
-    await browser.close();
+    }, null, 2));
   }
-});
 
-app.listen(PORT, () => {
-  console.log(`Server jalan di http://localhost:${PORT}`);
-});
+  await browser.close();
+
+})();
+
