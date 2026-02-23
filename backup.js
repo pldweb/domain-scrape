@@ -1,34 +1,20 @@
 const express = require('express');
 const { chromium } = require('playwright');
-const path = require('path');
 const app = express();
 const PORT = 3000;
-
-const userDataDir = path.join(__dirname, 'browser_session');
 
 app.get('/check/:domain', async (req, res) => {
   const domain = req.params.domain;
   
-  const context = await chromium.launchPersistentContext(userDataDir, {
-    headless: true,
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
-  });
-
+  const browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext();
   const page = await context.newPage();
 
   try {
-    await page.setExtraHTTPHeaders({
-      'Accept-Language': 'en-US,en;q=0.9',
-    });
-
-    console.log(`Checking domain: ${domain}`);
-
     await page.goto(`https://www.whois.com/whois/${domain}`, {
-      waitUntil: 'networkidle',
-      timeout: 30000
+      waitUntil: 'domcontentloaded',
+      timeout: 20000
     });
-
-    await page.waitForTimeout(Math.floor(Math.random() * 2000) + 1000);
 
     await page.waitForSelector('.whois-data', { timeout: 15000 });
 
@@ -39,7 +25,7 @@ app.get('/check/:domain', async (req, res) => {
         const label = row.querySelector('.df-label')?.innerText.trim();
         const value = row.querySelector('.df-value')?.innerText.trim();
         if (label && value) {
-          result[label.replace(':', '')] = value;
+          result[label.replace(':','')] = value;
         }
       });
       return result;
@@ -52,19 +38,16 @@ app.get('/check/:domain', async (req, res) => {
     });
 
   } catch (err) {
-    await page.screenshot({ path: 'debug_error.png' });
-    
     res.status(500).json({
       domain,
       success: false,
-      error: err.message,
-      note: "Cek debug_error.png untuk melihat apa yang dilihat robot"
+      error: err.message
     });
   } finally {
-    await context.close();
+    await browser.close();
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`Server http://localhost:${PORT}`);
+  console.log(`Server jalan di http://localhost:${PORT}`);
 });
