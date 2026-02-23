@@ -3,17 +3,14 @@ const { chromium } = require('playwright');
 const app = express();
 const PORT = 3000;
 
-// Endpoint: /check/namadomain.com
 app.get('/check/:domain', async (req, res) => {
   const domain = req.params.domain;
   
-  // 1. Launch Browser
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext();
   const page = await context.newPage();
 
   try {
-    // 2. Logika Scraping kamu (sama seperti sebelumnya)
     await page.goto(`https://www.whois.com/whois/${domain}`, {
       waitUntil: 'domcontentloaded',
       timeout: 20000
@@ -34,7 +31,6 @@ app.get('/check/:domain', async (req, res) => {
       return result;
     });
 
-    // 3. Kirim response langsung sebagai JSON
     res.json({
       domain,
       success: true,
